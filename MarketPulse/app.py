@@ -29,8 +29,8 @@ st.markdown("---")
 # --- PRICE CARDS ---
 def get_price(symbol):
     ticker = yf.Ticker(symbol)
-    data = ticker.history(period="2d", interval="1d")
-    if data.empty:
+    data = ticker.history(period="5d", interval="1d")
+    if data.empty or len(data) < 2:
         return None, None
     close = data['Close'].iloc[-1]
     prev = data['Close'].iloc[-2]
@@ -58,7 +58,47 @@ def show_card(col, name, price, change):
 show_card(col1, "NIFTY 50", nifty_price, nifty_change)
 show_card(col2, "SENSEX", sensex_price, sensex_change)
 show_card(col3, "GOLD", gold_price, gold_change)
-show_card(col4, "OIL", oil_price, oil_change)
+show_card(col4, "OIL", oil_price, oil_change)# --- GLOBAL TENSION INDEX ---
+NEWS_API_KEY = "bd3af160cb3d4533bc3386e578169ee4"
+url = f"https://newsapi.org/v2/everything?q=india+economy+geopolitics&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+response = requests.get(url)
+news_data = response.json()
+
+# Calculate GTI from sentiment
+articles_for_gti = news_data["articles"][:20] if news_data["status"] == "ok" else []
+negative_count = 0
+for article in articles_for_gti:
+    score = TextBlob(article["title"]).sentiment.polarity
+    if score < -0.1:
+        negative_count += 1
+
+gti = round((negative_count / max(len(articles_for_gti), 1)) * 100, 1)
+
+if gti >= 60:
+    gti_status = "🔴 CRITICAL"
+    gti_color = "#ff4444"
+elif gti >= 40:
+    gti_status = "🟡 ELEVATED"
+    gti_color = "#ffd700"
+else:
+    gti_status = "🟢 STABLE"
+    gti_color = "#00ff88"
+
+st.markdown(f"""
+<div style='background:#111827; border: 2px solid {gti_color}; 
+border-radius: 10px; padding: 1rem 2rem; margin-bottom: 1rem;
+display: flex; align-items: center; gap: 2rem;'>
+    <div>
+        <p style='color:#aaa; margin:0; font-size:0.8rem'>GLOBAL TENSION INDEX</p>
+        <h1 style='color:{gti_color}; margin:0; font-size:3rem'>{gti}</h1>
+    </div>
+    <div>
+        <h2 style='color:{gti_color}; margin:0'>{gti_status}</h2>
+        <p style='color:#aaa; margin:0; font-size:0.8rem'>Based on live news sentiment analysis</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 st.markdown("---")
 
